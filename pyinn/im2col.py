@@ -194,6 +194,8 @@ def col2im_batch(grad_output, kernel_size, stride, padding, input_size=None):
             _col2im(go, kernel_size, stride, padding, out=gx, input_size=input_size)
         return grad_input
 
+"""
+# original version as the author's Gitub repository!
 
 class Im2Col(Function):
     def __init__(self, kernel_size, stride, padding):
@@ -211,7 +213,34 @@ class Im2Col(Function):
             grad_output = grad_output.contiguous()
         assert(grad_output.is_contiguous())
         return col2im_batch(grad_output, self.kernel_size, self.stride, self.padding, self.input_size)
+"""
 
+"""
+# added by CCJ on 2019/12/17:
+Updated for warning from new version PyTorch:
+    /pytorch/torch/csrc/autograd/python_function.cpp:638: UserWarning:
+    Legacy autograd function with non-static forward method is deprecated and will be 
+    removed in 1.3. Please use new-style autograd function with static forward method. 
+    (Example: https://pytorch.org/docs/stable/autograd.html#torch.autograd.Function)
+"""
+class Im2Col(Function):
+    
+    @staticmethod
+    def forward(ctx, input, kernel_size, stride, padding):
+        assert(input.is_contiguous())
+        ctx.kernel_size = kernel_size
+        ctx.stride = stride
+        ctx.padding = padding
+        ctx.input_size = input.size()[-2:]
+        return im2col_batch(input, kernel_size, stride, padding)
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        if not grad_output.is_contiguous():
+            grad_output = grad_output.contiguous()
+        assert(grad_output.is_contiguous())
+        return col2im_batch(grad_output, ctx.kernel_size, ctx.stride, 
+                ctx.padding, ctx.input_size)
 
 class Col2Im(Function):
     def __init__(self, kernel_size, stride, padding, input_size=None):
@@ -241,7 +270,9 @@ def im2col(input, kernel_size, stride, padding):
 
     TODO: add CPU version (via numpy?)
     """
-    return Im2Col(kernel_size, stride, padding)(input)
+    #return Im2Col(kernel_size, stride, padding)(input)
+    #added by CCJ: updated for applying "new style" static functions via ".apply"
+    return Im2Col.apply(input, kernel_size, stride, padding)
 
 
 def col2im(input, kernel_size, stride, padding):
