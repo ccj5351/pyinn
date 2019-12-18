@@ -65,7 +65,7 @@ setup_info_local = dict(
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='pyinn',  # Required
+    name='pyinnV2',  # Required
     
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
@@ -73,7 +73,7 @@ setup_info_local = dict(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.1',  # Required
+    version='0.0.1',  # Required
 
     author="Forked from Sergey Zagoruyko, updated by Changjiang Cai for his own research project", # Optional
     author_email='caicj5351@gmail.com', # Optional 
