@@ -1,7 +1,7 @@
 from torch.autograd import Function
 import torch
 from torch.nn.modules.utils import _pair
-from pyinn.utils import Dtype, Stream, load_kernel
+from .utils import Dtype, Stream, load_kernel
 
 CUDA_NUM_THREADS = 1024
 
@@ -195,27 +195,6 @@ def col2im_batch(grad_output, kernel_size, stride, padding, input_size=None):
         return grad_input
 
 """
-# original version as the author's Gitub repository!
-
-class Im2Col(Function):
-    def __init__(self, kernel_size, stride, padding):
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-
-    def forward(self, input):
-        assert(input.is_contiguous())
-        self.input_size = input.size()[-2:]
-        return im2col_batch(input, self.kernel_size, self.stride, self.padding)
-
-    def backward(self, grad_output):
-        if not grad_output.is_contiguous():
-            grad_output = grad_output.contiguous()
-        assert(grad_output.is_contiguous())
-        return col2im_batch(grad_output, self.kernel_size, self.stride, self.padding, self.input_size)
-"""
-
-"""
 # added by CCJ on 2019/12/17:
 Updated for warning from new version PyTorch:
     /pytorch/torch/csrc/autograd/python_function.cpp:638: UserWarning:
@@ -239,25 +218,31 @@ class Im2Col(Function):
         if not grad_output.is_contiguous():
             grad_output = grad_output.contiguous()
         assert(grad_output.is_contiguous())
-        return col2im_batch(grad_output, ctx.kernel_size, ctx.stride, 
-                ctx.padding, ctx.input_size)
+        #return col2im_batch(grad_output, ctx.kernel_size, ctx.stride, ctx.padding, ctx.input_size)
+        # added by CCJ:
+        #NOTE:added: 3 None as return, due to the above forward() requires 4 arguments (except the `ctx`)
+        return col2im_batch(grad_output, ctx.kernel_size, 
+                ctx.stride, ctx.padding, ctx.input_size), None, None, None
 
 class Col2Im(Function):
-    def __init__(self, kernel_size, stride, padding, input_size=None):
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.input_size = input_size
-
-    def forward(self, input):
+    @staticmethod
+    def forward(ctx, input, kernel_size, stride, padding, input_size = None):
         assert(input.is_contiguous())
-        return col2im_batch(input, self.kernel_size, self.stride, self.padding, self.input_size)
+        ctx.kernel_size = kernel_size
+        ctx.stride = stride
+        ctx.padding = padding
+        ctx.input_size = input_size
+        #return col2im_batch(input, kernel_size, stride, padding, input_size)
+        # added by CCJ:
+        #NOTE:added: 3 None as return, due to the above forward() requires 4 arguments (except the `ctx`)
+        return col2im_batch(input, kernel_size, stride, padding, input_size), None, None, None, None
 
-    def backward(self, grad_output):
+    @staticmethod
+    def backward(ctx, grad_output):
         if not grad_output.is_contiguous():
             grad_output = grad_output.contiguous()
         assert(grad_output.is_contiguous())        
-        return im2col_batch(grad_output, self.kernel_size, self.stride, self.padding)
+        return im2col_batch(grad_output, ctx.kernel_size, ctx.stride, ctx.padding)
 
 
 def im2col(input, kernel_size, stride, padding):
@@ -280,4 +265,6 @@ def col2im(input, kernel_size, stride, padding):
 
     This is used in backward wrt inputs in GEMM-based convolution.
     """
-    return Col2Im(kernel_size, stride, padding)(input)
+    #return Col2Im(kernel_size, stride, padding)(input)
+    #added by CCJ: updated for applying "new style" static functions via ".apply"
+    return Col2Im.apply(input, kernel_size, stride, padding)
